@@ -1,5 +1,42 @@
 // @ts-ignore
 (function () {
+  const createPopover = (element, issue, wcagLink) => {
+    const popover = document.createElement('div');
+    popover.className = 'accessibility-popover';
+    popover.style.position = 'absolute';
+    popover.style.background = 'rgba(255, 0, 0, 0.9)';
+    popover.style.color = '#fff';
+    popover.style.padding = '8px';
+    popover.style.borderRadius = '4px';
+    popover.style.zIndex = '9999';
+    popover.style.top = `${element.getBoundingClientRect().top - 30}px`;
+    popover.style.left = `${element.getBoundingClientRect().left}px`;
+
+    const issueText = document.createElement('div');
+    issueText.textContent = issue;
+
+    const wcagLinkElement = document.createElement('a');
+    wcagLinkElement.textContent = 'WCAG Guidelines';
+    wcagLinkElement.href = wcagLink;
+    wcagLinkElement.target = '_blank';
+    wcagLinkElement.style.color = '#fff';
+    wcagLinkElement.style.textDecoration = 'underline';
+    wcagLinkElement.style.marginTop = '4px';
+
+    const removeButton = document.createElement('button');
+    removeButton.textContent = 'Remove';
+    removeButton.style.marginTop = '8px';
+    removeButton.addEventListener('click', () => {
+      element.style.border = '';
+      popover.remove();
+    });
+
+    popover.appendChild(issueText);
+    popover.appendChild(wcagLinkElement);
+    popover.appendChild(removeButton);
+    document.body.appendChild(popover);
+  };
+
   const checkSemanticMarkup = () => {
     const issues = [];
     const semanticElements = [
@@ -22,8 +59,15 @@
     document.querySelectorAll('*').forEach((element) => {
       const tagName = element.tagName.toLowerCase();
       if (!semanticElements.includes(tagName)) {
-        issues.push(`Semantic Error: ${tagName} is not a semantic element.`);
-        element.style.border = '2px solid red'; // Highlight non-semantic elements
+        issues.push({
+          element,
+          issue: `Semantic Error: ${tagName} is not a semantic element.`,
+          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html',
+        });
+        element.style.border = '2px solid red';
+        element.addEventListener('mouseover', () => {
+          createPopover(element, `Semantic Error: ${tagName} is not a semantic element.`, 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html');
+        });
       }
     });
 
@@ -32,7 +76,7 @@
 
   const checkFontSizes = () => {
     const issues = [];
-    const minFontSize = 16; // Adjust as needed
+    const minFontSize = 16;
 
     document.querySelectorAll('*').forEach((element) => {
       const computedFontSize = parseFloat(
@@ -40,10 +84,19 @@
       );
 
       if (computedFontSize < minFontSize) {
-        issues.push(
-          `Font Size Error: Font size too small (${computedFontSize}px): ${element.tagName}`
-        );
-        element.style.border = '2px solid red'; // Highlight elements with small font size
+        issues.push({
+          element,
+          issue: `Font Size Error: Font size too small (${computedFontSize}px): ${element.tagName}`,
+          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/visual-audio-contrast-text-presentation.html',
+        });
+        element.style.border = '2px solid red';
+        element.addEventListener('mouseover', () => {
+          createPopover(
+            element,
+            `Font Size Error: Font size too small (${computedFontSize}px): ${element.tagName}`,
+            'https://www.w3.org/WAI/WCAG21/Understanding/visual-audio-contrast-text-presentation.html'
+          );
+        });
       }
     });
 
@@ -52,10 +105,9 @@
 
   const checkColorContrast = () => {
     const issues = [];
-    const minContrastRatio = 4.5; // Adjust as needed
+    const minContrastRatio = 4.5;
 
     const getContrastRatio = (color1, color2) => {
-      // Function to calculate color contrast ratio
       const luminance1 = calculateLuminance(color1);
       const luminance2 = calculateLuminance(color2);
       const lighter = Math.max(luminance1, luminance2);
@@ -64,7 +116,6 @@
     };
 
     const calculateLuminance = (color) => {
-      // Function to calculate color luminance
       const rgb = parseColor(color);
       const r = gammaCorrect(rgb[0] / 255);
       const g = gammaCorrect(rgb[1] / 255);
@@ -73,22 +124,17 @@
     };
 
     const gammaCorrect = (value) => {
-      // Gamma correction for color luminance calculation
       return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
     };
 
     const parseColor = (color) => {
-      // Function to parse color values
-      const tempElem = document.createElement('div');
-      tempElem.style.color = color;
-      document.body.appendChild(tempElem);
-      const computedColor = window.getComputedStyle(tempElem).color;
-      document.body.removeChild(tempElem);
-      const matches = computedColor.match(/(\d+(\.\d+)?)/g);
-      if (matches && matches.length === 3) {
-        return [parseFloat(matches[0]), parseFloat(matches[1]), parseFloat(matches[2])];
-      }
-      return [0, 0, 0];
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext('2d');
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      const data = context.getImageData(0, 0, 1, 1).data;
+      return [data[0], data[1], data[2]];
     };
 
     document.querySelectorAll('*').forEach((element) => {
@@ -97,10 +143,23 @@
       const contrastRatio = getContrastRatio(backgroundColor, color);
 
       if (contrastRatio < minContrastRatio) {
-        issues.push(
-          `Contrast Error: Low contrast ratio (${contrastRatio.toFixed(2)}): ${element.tagName} - ${element.textContent}`
-        );
-        element.style.border = '2px solid red'; // Highlight elements with low color contrast
+        issues.push({
+          element,
+          issue: `Contrast Error: Low contrast ratio (${contrastRatio.toFixed(
+            2
+          )}): ${element.tagName} - ${element.textContent}`,
+          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/visual-audio-contrast-text-presentation.html',
+        });
+        element.style.border = '2px solid red';
+        element.addEventListener('mouseover', () => {
+          createPopover(
+            element,
+            `Contrast Error: Low contrast ratio (${contrastRatio.toFixed(
+              2
+            )}): ${element.tagName} - ${element.textContent}`,
+            'https://www.w3.org/WAI/WCAG21/Understanding/visual-audio-contrast-text-presentation.html'
+          );
+        });
       }
     });
 
@@ -110,11 +169,22 @@
   const checkAriaLabels = () => {
     const issues = [];
 
-    document.querySelectorAll('[aria-label]').forEach((element) => {
+    document.querySelectorAll('*[aria-label]').forEach((element) => {
       const ariaLabel = element.getAttribute('aria-label');
-      if (!ariaLabel || ariaLabel.trim() === '') {
-        issues.push(`ARIA Error: Element is missing a meaningful aria-label attribute: ${element.outerHTML}`);
-        element.style.border = '2px solid red'; // Highlight elements with missing aria-label
+      if (!ariaLabel.trim()) {
+        issues.push({
+          element,
+          issue: `ARIA Label Error: Empty aria-label attribute: ${element.tagName}`,
+          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html',
+        });
+        element.style.border = '2px solid red';
+        element.addEventListener('mouseover', () => {
+          createPopover(
+            element,
+            `ARIA Label Error: Empty aria-label attribute: ${element.tagName}`,
+            'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
+          );
+        });
       }
     });
 
@@ -124,25 +194,40 @@
   const checkAltTags = () => {
     const issues = [];
 
-    document.querySelectorAll('img').forEach((image) => {
-      const altText = image.getAttribute('alt');
+    document.querySelectorAll('img').forEach((element) => {
+      const altText = element.getAttribute('alt');
       if (!altText || altText.trim() === '') {
-        issues.push(`Image missing alt text: ${image.outerHTML}`);
-        image.style.border = '2px solid red'; // Highlight images with missing alt text
+        issues.push({
+          element,
+          issue: `Image Error: Image missing alt text: ${element.outerHTML}`,
+          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html',
+        });
+        element.style.border = '2px solid red';
+        element.addEventListener('mouseover', () => {
+          createPopover(
+            element,
+            `Image Error: Image missing alt text: ${element.outerHTML}`,
+            'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html'
+          );
+        });
       }
     });
 
     return issues;
   };
 
-  const printIssues = (issues) => {
-    if (issues.length > 0) {
-      issues.forEach((issue) => {
-        console.log(issue);
-      });
-    } else {
-      console.log('No accessibility issues found.');
+  const removePopover = (element) => {
+    element.style.border = '';
+    const popover = element.querySelector('.accessibility-popover');
+    if (popover) {
+      popover.remove();
     }
+  };
+
+  const handleMouseOut = (element) => {
+    element.addEventListener('mouseout', () => {
+      removePopover(element);
+    });
   };
 
   const semanticMarkupIssues = checkSemanticMarkup();
@@ -159,6 +244,7 @@
     ...altTagIssues,
   ];
 
-  printIssues(allIssues);
+  allIssues.forEach((issueItem) => {
+    handleMouseOut(issueItem.element);
+  });
 })();
-
