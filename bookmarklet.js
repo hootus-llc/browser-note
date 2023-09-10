@@ -1,250 +1,131 @@
-// @ts-ignore
-(function () {
-  const createPopover = (element, issue, wcagLink) => {
-    const popover = document.createElement('div');
-    popover.className = 'accessibility-popover';
-    popover.style.position = 'absolute';
-    popover.style.background = 'rgba(255, 0, 0, 0.9)';
-    popover.style.color = '#fff';
-    popover.style.padding = '8px';
-    popover.style.borderRadius = '4px';
-    popover.style.zIndex = '9999';
-    popover.style.top = `${element.getBoundingClientRect().top - 30}px`;
-    popover.style.left = `${element.getBoundingClientRect().left}px`;
+// Function to perform an accessibility audit
+function performAccessibilityAudit() {
+    const auditResults = [];
 
-    const issueText = document.createElement('div');
-    issueText.textContent = issue;
-
-    const wcagLinkElement = document.createElement('a');
-    wcagLinkElement.textContent = 'WCAG Guidelines';
-    wcagLinkElement.href = wcagLink;
-    wcagLinkElement.target = '_blank';
-    wcagLinkElement.style.color = '#fff';
-    wcagLinkElement.style.textDecoration = 'underline';
-    wcagLinkElement.style.marginTop = '4px';
-
-    const removeButton = document.createElement('button');
-    removeButton.textContent = 'Remove';
-    removeButton.style.marginTop = '8px';
-    removeButton.addEventListener('click', () => {
-      element.style.border = '';
-      popover.remove();
+    // Check for missing 'alt' attributes on images
+    const images = document.querySelectorAll('img');
+    images.forEach(image => {
+        if (!image.getAttribute('alt')) {
+            auditResults.push({
+                element: image,
+                issue: 'Image is missing alt text'
+            });
+        }
     });
 
-    popover.appendChild(issueText);
-    popover.appendChild(wcagLinkElement);
-    popover.appendChild(removeButton);
-    document.body.appendChild(popover);
-  };
-
-  const checkSemanticMarkup = () => {
-    const issues = [];
-    const semanticElements = [
-      'header',
-      'nav',
-      'main',
-      'article',
-      'section',
-      'aside',
-      'footer',
-      'figure',
-      'figcaption',
-      'details',
-      'summary',
-      'mark',
-      'time',
-      'code',
-    ];
-
-    document.querySelectorAll('*').forEach((element) => {
-      const tagName = element.tagName.toLowerCase();
-      if (!semanticElements.includes(tagName)) {
-        issues.push({
-          element,
-          issue: `Semantic Error: ${tagName} is not a semantic element.`,
-          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html',
-        });
-        element.style.border = '2px solid red';
-        element.addEventListener('mouseover', () => {
-          createPopover(element, `Semantic Error: ${tagName} is not a semantic element.`, 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html');
-        });
-      }
+    // Check for missing 'aria-label' or 'aria-labelledby' on form elements
+    const formControls = document.querySelectorAll('input, textarea, select');
+    formControls.forEach(control => {
+        if (!control.getAttribute('aria-label') && !control.getAttribute('aria-labelledby')) {
+            auditResults.push({
+                element: control,
+                issue: 'Form control is missing aria-label or aria-labelledby'
+            });
+        }
     });
 
-    return issues;
-  };
-
-  const checkFontSizes = () => {
-    const issues = [];
-    const minFontSize = 16;
-
-    document.querySelectorAll('*').forEach((element) => {
-      const computedFontSize = parseFloat(
-        window.getComputedStyle(element).fontSize
-      );
-
-      if (computedFontSize < minFontSize) {
-        issues.push({
-          element,
-          issue: `Font Size Error: Font size too small (${computedFontSize}px): ${element.tagName}`,
-          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/visual-audio-contrast-text-presentation.html',
-        });
-        element.style.border = '2px solid red';
-        element.addEventListener('mouseover', () => {
-          createPopover(
-            element,
-            `Font Size Error: Font size too small (${computedFontSize}px): ${element.tagName}`,
-            'https://www.w3.org/WAI/WCAG21/Understanding/visual-audio-contrast-text-presentation.html'
-          );
-        });
-      }
+    // Check for missing 'role' attributes on custom components
+    const customComponents = document.querySelectorAll('[role]');
+    customComponents.forEach(component => {
+        if (!component.getAttribute('role')) {
+            auditResults.push({
+                element: component,
+                issue: 'Custom component is missing a role attribute'
+            });
+        }
     });
 
-    return issues;
-  };
-
-  const checkColorContrast = () => {
-    const issues = [];
-    const minContrastRatio = 4.5;
-
-    const getContrastRatio = (color1, color2) => {
-      const luminance1 = calculateLuminance(color1);
-      const luminance2 = calculateLuminance(color2);
-      const lighter = Math.max(luminance1, luminance2);
-      const darker = Math.min(luminance1, luminance2);
-      return (lighter + 0.05) / (darker + 0.05);
-    };
-
-    const calculateLuminance = (color) => {
-      const rgb = parseColor(color);
-      const r = gammaCorrect(rgb[0] / 255);
-      const g = gammaCorrect(rgb[1] / 255);
-      const b = gammaCorrect(rgb[2] / 255);
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-
-    const gammaCorrect = (value) => {
-      return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
-    };
-
-    const parseColor = (color) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = 1;
-      const context = canvas.getContext('2d');
-      context.fillStyle = color;
-      context.fillRect(0, 0, 1, 1);
-      const data = context.getImageData(0, 0, 1, 1).data;
-      return [data[0], data[1], data[2]];
-    };
-
-    document.querySelectorAll('*').forEach((element) => {
-      const backgroundColor = window.getComputedStyle(element).backgroundColor;
-      const color = window.getComputedStyle(element).color;
-      const contrastRatio = getContrastRatio(backgroundColor, color);
-
-      if (contrastRatio < minContrastRatio) {
-        issues.push({
-          element,
-          issue: `Contrast Error: Low contrast ratio (${contrastRatio.toFixed(
-            2
-          )}): ${element.tagName} - ${element.textContent}`,
-          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/visual-audio-contrast-text-presentation.html',
-        });
-        element.style.border = '2px solid red';
-        element.addEventListener('mouseover', () => {
-          createPopover(
-            element,
-            `Contrast Error: Low contrast ratio (${contrastRatio.toFixed(
-              2
-            )}): ${element.tagName} - ${element.textContent}`,
-            'https://www.w3.org/WAI/WCAG21/Understanding/visual-audio-contrast-text-presentation.html'
-          );
-        });
-      }
+    // Check for missing 'tabindex' attributes on interactive elements
+    const interactiveElements = document.querySelectorAll('a, button, [role="button"], [role="link"], [tabindex]');
+    interactiveElements.forEach(element => {
+        if (!element.getAttribute('tabindex')) {
+            auditResults.push({
+                element: element,
+                issue: 'Interactive element is missing a tabindex attribute'
+            });
+        }
     });
 
-    return issues;
-  };
+    // Check for low color contrast on text elements
+    const textElements = document.querySelectorAll('p, span, a, button, [role="text"]');
+    textElements.forEach(element => {
+        const computedStyle = getComputedStyle(element);
+        const backgroundColor = computedStyle.backgroundColor;
+        const color = computedStyle.color;
 
-  const checkAriaLabels = () => {
-    const issues = [];
-
-    document.querySelectorAll('*[aria-label]').forEach((element) => {
-      const ariaLabel = element.getAttribute('aria-label');
-      if (!ariaLabel.trim()) {
-        issues.push({
-          element,
-          issue: `ARIA Label Error: Empty aria-label attribute: ${element.tagName}`,
-          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html',
-        });
-        element.style.border = '2px solid red';
-        element.addEventListener('mouseover', () => {
-          createPopover(
-            element,
-            `ARIA Label Error: Empty aria-label attribute: ${element.tagName}`,
-            'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
-          );
-        });
-      }
+        if (colorContrastRatio(backgroundColor, color) < 4.5) {
+            auditResults.push({
+                element: element,
+                issue: 'Low color contrast on text element'
+            });
+        }
     });
 
-    return issues;
-  };
+    // Add more checks as needed
 
-  const checkAltTags = () => {
-    const issues = [];
+    return auditResults;
+}
 
-    document.querySelectorAll('img').forEach((element) => {
-      const altText = element.getAttribute('alt');
-      if (!altText || altText.trim() === '') {
-        issues.push({
-          element,
-          issue: `Image Error: Image missing alt text: ${element.outerHTML}`,
-          wcagLink: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html',
-        });
-        element.style.border = '2px solid red';
-        element.addEventListener('mouseover', () => {
-          createPopover(
-            element,
-            `Image Error: Image missing alt text: ${element.outerHTML}`,
-            'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html'
-          );
-        });
-      }
-    });
+// Function to calculate color contrast ratio
+function colorContrastRatio(background, text) {
+    const bg = getRGBValues(background);
+    const fg = getRGBValues(text);
 
-    return issues;
-  };
+    const l1 = luminance(bg.r, bg.g, bg.b);
+    const l2 = luminance(fg.r, fg.g, fg.b);
 
-  const removePopover = (element) => {
-    element.style.border = '';
-    const popover = element.querySelector('.accessibility-popover');
-    if (popover) {
-      popover.remove();
+    const brighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+
+    return (brighter + 0.05) / (darker + 0.05);
+}
+
+// Function to get RGB values from a color string
+function getRGBValues(color) {
+    const match = color.match(/(\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        return {
+            r: parseInt(match[1]),
+            g: parseInt(match[2]),
+            b: parseInt(match[3])
+        };
     }
-  };
+    return null;
+}
 
-  const handleMouseOut = (element) => {
-    element.addEventListener('mouseout', () => {
-      removePopover(element);
+// Function to calculate luminance
+function luminance(r, g, b) {
+    const a = [r, g, b].map(value => {
+        value /= 255;
+        return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
     });
-  };
+    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+}
 
-  const semanticMarkupIssues = checkSemanticMarkup();
-  const fontSizesIssues = checkFontSizes();
-  const colorContrastIssues = checkColorContrast();
-  const ariaLabelIssues = checkAriaLabels();
-  const altTagIssues = checkAltTags();
+// Function to display audit results in the DOM
+function displayAuditResults(results) {
+    const auditResultsContainer = document.createElement('div');
+    auditResultsContainer.id = 'audit-results';
+    auditResultsContainer.style.position = 'fixed';
+    auditResultsContainer.style.top = '0';
+    auditResultsContainer.style.right = '0';
+    auditResultsContainer.style.backgroundColor = '#333';
+    auditResultsContainer.style.color = '#fff';
+    auditResultsContainer.style.padding = '10px';
+    auditResultsContainer.style.maxHeight = '100%';
+    auditResultsContainer.style.overflowY = 'auto';
 
-  const allIssues = [
-    ...semanticMarkupIssues,
-    ...fontSizesIssues,
-    ...colorContrastIssues,
-    ...ariaLabelIssues,
-    ...altTagIssues,
-  ];
+    results.forEach(result => {
+        const resultElement = document.createElement('div');
+        resultElement.textContent = result.issue;
+        auditResultsContainer.appendChild(resultElement);
+    });
 
-  allIssues.forEach((issueItem) => {
-    handleMouseOut(issueItem.element);
-  });
-})();
+    document.body.appendChild(auditResultsContainer);
+}
+
+// Trigger the audit when the page loads
+window.addEventListener('load', () => {
+    const auditResults = performAccessibilityAudit();
+    displayAuditResults(auditResults);
+});
